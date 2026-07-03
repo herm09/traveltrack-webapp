@@ -1,7 +1,6 @@
-// path: lib/src/models/quest.dart
 enum QuestStatus { available, inProgress, completed }
 
-enum QuestCategory { histoire, gastro, social, sport, nature }
+enum QuestCategory { histoire, gastro, social, sport, nature, culture, all }
 
 extension QuestCategoryX on QuestCategory {
   String get label {
@@ -16,6 +15,10 @@ extension QuestCategoryX on QuestCategory {
         return 'Sport';
       case QuestCategory.nature:
         return 'Nature';
+      case QuestCategory.culture:
+        return 'Culture';
+      case QuestCategory.all:
+        return 'Toutes';
     }
   }
 }

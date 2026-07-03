@@ -26,28 +26,25 @@ class TravelTrackApp extends StatelessWidget {
       theme: ThemeData(colorSchemeSeed: Colors.teal, useMaterial3: true),
       routerConfig: appRouter,
       builder: (context, child) {
-        // Force un rendu "mobile" même sur web/desktop :
-        // on centre le contenu dans un cadre de largeur max type smartphone.
+        // Force un rendu "mobile" même sur web/desktop
         return Container(
           color: const Color(0xFFEFEFEF), // fond gris autour du "téléphone"
           child: Center(
             child: Container(
               constraints: const BoxConstraints(
-                maxWidth: 430, // largeur type iPhone Pro Max
+                maxWidth: 392, // largeur Pixel 6
               ),
               decoration: BoxDecoration(
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
+                    color: Colors.black.withOpacity(0.15),
                     blurRadius: 24,
                     offset: const Offset(0, 8),
                   ),
                 ],
               ),
               child: MediaQuery(
-                // On garde la MediaQuery du parent (nécessaire pour go_router / Navigator)
-                // mais on peut clipper l'affichage.
                 data: MediaQuery.of(context),
                 child: ClipRect(child: child!),
               ),
