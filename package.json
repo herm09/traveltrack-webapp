@@ -2,9 +2,9 @@
   "name": "traveltrack-webapp",
   "version": "1.0.0",
   "private": true,
-  "description": "TravelTrack monorepo — React Native frontend + Node.js backend",
+  "description": "TravelTrack monorepo — Flutter frontend + Node.js backend",
   "scripts": {
-    "frontend": "cd frontend && npm start",
+    "frontend": "cd frontend && flutter run",
     "backend": "cd backend && npm run dev"
   }
 }

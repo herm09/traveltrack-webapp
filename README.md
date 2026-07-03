@@ -1,12 +1,12 @@
 # TravelTrack
 
-Travel tracking app — React Native frontend + Node.js/Express backend.
+Travel tracking app — Flutter frontend + Node.js/Express backend.
 
 ## Structure
 
 ```
 traveltrack-webapp/
-├── frontend/   React Native (CLI) — React Navigation + Leaflet + Supabase
+├── frontend/   Flutter — go_router + flutter_map (OpenStreetMap) + Supabase
 └── backend/    Node.js/Express — Supabase (service role) + Render deployment
 ```
 
@@ -14,7 +14,7 @@ traveltrack-webapp/
 
 ### Prerequisites
 - Node.js 18+
-- Android Studio / Xcode (for device/emulator)
+- Flutter SDK (stable channel) + Android Studio / Xcode (for device/emulator)
 - A [Supabase](https://supabase.com) project
 
 ### Backend
@@ -31,8 +31,8 @@ npm run dev
 ```bash
 cd frontend
 cp .env.example .env   # fill in your Supabase credentials + API URL
-npm install
-npx react-native run-android   # or run-ios
+flutter pub get
+flutter run   # pick an Android/iOS device or emulator
 ```
 
 ## Environment variables

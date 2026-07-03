@@ -1,0 +1,5 @@
+package com.traveltrack.traveltrack
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()
