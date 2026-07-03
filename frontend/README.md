@@ -1,6 +1,6 @@
 # TravelTrack (Flutter)
 
-Flutter frontend for TravelTrack — bottom-tab navigation (Home / Map), a native OpenStreetMap view via [flutter_map](https://pub.dev/packages/flutter_map), and Supabase auth/data via [supabase_flutter](https://pub.dev/packages/supabase_flutter).
+Flutter frontend for TravelTrack — bottom-tab navigation (Home / Map), a Leaflet/OpenStreetMap view via [webview_flutter](https://pub.dev/packages/webview_flutter), and Supabase auth/data via [supabase_flutter](https://pub.dev/packages/supabase_flutter).
 
 ## Getting started
 
@@ -14,9 +14,10 @@ flutter run
 
 ```
 lib/
-├── main.dart
 └── src/
-    ├── lib/            # Supabase client
-    ├── navigation/      # go_router config + tab shell
-    └── screens/         # Home, Map, TripDetail
+    ├── services/     # Supabase client
+    ├── navigation/   # go_router config + tab shell
+    ├── models/
+    ├── viewmodels/
+    └── views/        # Home, Map, TripDetail
 ```

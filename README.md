@@ -6,7 +6,7 @@ Travel tracking app — Flutter frontend + Node.js/Express backend.
 
 ```
 traveltrack-webapp/
-├── frontend/   Flutter — go_router + flutter_map (OpenStreetMap) + Supabase
+├── frontend/   Flutter — go_router + Leaflet (WebView) + Supabase
 └── backend/    Node.js/Express — Supabase (service role) + Render deployment
 ```
 
