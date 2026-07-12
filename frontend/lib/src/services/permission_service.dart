@@ -72,7 +72,11 @@ class PermissionService {
   // Notifications
 
   Future<AppPermissionStatus> checkNotificationPermission() async {
-    return _fromWebPermissionState(_notificationPermission);
+    try {
+      return _fromWebPermissionState(_notificationPermission);
+    } catch (_) {
+      return AppPermissionStatus.prompt;
+    }
   }
 
   Future<bool> requestNotificationPermission() async {
