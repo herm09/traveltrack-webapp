@@ -49,6 +49,8 @@ class AuthViewModel extends ChangeNotifier {
     } on AuthException catch (e) {
       if (_isEmailAlreadyUsed(e)) {
         _emailErrorMessage = 'Adresse mail déjà utilisée.';
+      } else if (_isInvalidCredentials(e)) {
+        _errorMessage = 'Email ou mot de passe incorrect.';
       } else {
         _errorMessage = e.message;
       }
@@ -66,6 +68,11 @@ class AuthViewModel extends ChangeNotifier {
     if (e.code == 'user_already_exists') return true;
     final message = e.message.toLowerCase();
     return message.contains('already registered') || message.contains('already exists');
+  }
+
+  bool _isInvalidCredentials(AuthException e) {
+    if (e.code == 'invalid_credentials') return true;
+    return e.message.toLowerCase().contains('invalid login credentials');
   }
 }
 

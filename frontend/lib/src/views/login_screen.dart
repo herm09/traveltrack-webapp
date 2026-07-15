@@ -27,7 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     // Pas de navigation manuelle ici : GoRouter réagit automatiquement au
     // changement de session via `refreshListenable` + `redirect` (voir
-    // app_router.dart) et nous enverra sur /home dès que la connexion réussit.
+    // app_router.dart) et nous enverra sur /map dès que la connexion réussit.
     await authViewModel.signIn(
       email: _emailController.text.trim(),
       password: _passwordController.text,
@@ -57,7 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         keyboardType: TextInputType.emailAddress,
                         decoration: const InputDecoration(labelText: 'Email'),
                         validator: (value) =>
-                            (value == null || !value.contains('@')) ? 'Email invalide' : null,
+                            (value == null || value.isEmpty) ? 'Email requis' : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
@@ -65,7 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         obscureText: true,
                         decoration: const InputDecoration(labelText: 'Mot de passe'),
                         validator: (value) =>
-                            (value == null || value.length < 6) ? '6 caractères minimum' : null,
+                            (value == null || value.isEmpty) ? 'Mot de passe requis' : null,
                       ),
                       if (authViewModel.errorMessage != null) ...[
                         const SizedBox(height: 12),
