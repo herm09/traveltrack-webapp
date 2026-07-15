@@ -14,6 +14,11 @@ class AuthViewModel extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
+  /// Erreur spécifique au champ email (ex: adresse déjà utilisée), affichée
+  /// sous l'input mail plutôt que dans le message d'erreur générique.
+  String? _emailErrorMessage;
+  String? get emailErrorMessage => _emailErrorMessage;
+
   User? get currentUser => _authService.currentUser;
 
   bool get isAuthenticated => _authService.currentSession != null;
@@ -36,12 +41,17 @@ class AuthViewModel extends ChangeNotifier {
   Future<bool> _run(Future<void> Function() action) async {
     _isLoading = true;
     _errorMessage = null;
+    _emailErrorMessage = null;
     notifyListeners();
     try {
       await action();
       return true;
     } on AuthException catch (e) {
-      _errorMessage = e.message;
+      if (_isEmailAlreadyUsed(e)) {
+        _emailErrorMessage = 'Adresse mail déjà utilisée.';
+      } else {
+        _errorMessage = e.message;
+      }
       return false;
     } catch (_) {
       _errorMessage = 'Une erreur inattendue est survenue. Réessaie.';
@@ -50,6 +60,12 @@ class AuthViewModel extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  bool _isEmailAlreadyUsed(AuthException e) {
+    if (e.code == 'user_already_exists') return true;
+    final message = e.message.toLowerCase();
+    return message.contains('already registered') || message.contains('already exists');
   }
 }
 

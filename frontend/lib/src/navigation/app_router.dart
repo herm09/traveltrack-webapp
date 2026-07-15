@@ -22,6 +22,7 @@ final GoRouter appRouter = GoRouter(
     final loggingIn = state.matchedLocation == '/login' || state.matchedLocation == '/signup';
 
     if (!loggedIn && !loggingIn) return '/login';
+    if (loggedIn && state.matchedLocation == '/signup') return '/map';
     if (loggedIn && loggingIn) return '/home';
     return null;
   },

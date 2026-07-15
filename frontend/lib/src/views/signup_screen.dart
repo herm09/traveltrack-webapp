@@ -27,7 +27,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
     // Pas de navigation manuelle ici : GoRouter réagit automatiquement au
     // changement de session via `refreshListenable` + `redirect` (voir
-    // app_router.dart) et nous enverra sur /home dès que l'inscription réussit.
+    // app_router.dart) et nous enverra sur /map dès que l'inscription réussit.
     await authViewModel.signUp(
       email: _emailController.text.trim(),
       password: _passwordController.text,
@@ -57,15 +57,25 @@ class _SignupScreenState extends State<SignupScreen> {
                         keyboardType: TextInputType.emailAddress,
                         decoration: const InputDecoration(labelText: 'Email'),
                         validator: (value) =>
-                            (value == null || !value.contains('@')) ? 'Email invalide' : null,
+                            (value == null || value.isEmpty) ? 'Email requis' : null,
                       ),
+                      if (authViewModel.emailErrorMessage != null) ...[
+                        const SizedBox(height: 4),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            authViewModel.emailErrorMessage!,
+                            style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _passwordController,
                         obscureText: true,
                         decoration: const InputDecoration(labelText: 'Mot de passe'),
                         validator: (value) =>
-                            (value == null || value.length < 6) ? '6 caractères minimum' : null,
+                            (value == null || value.isEmpty) ? 'Mot de passe requis' : null,
                       ),
                       if (authViewModel.errorMessage != null) ...[
                         const SizedBox(height: 12),
@@ -83,7 +93,7 @@ class _SignupScreenState extends State<SignupScreen> {
                                 height: 16,
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
-                            : const Text('Créer un compte'),
+                            : const Text('Créer mon compte'),
                       ),
                       TextButton(
                         onPressed: () => context.go('/login'),
