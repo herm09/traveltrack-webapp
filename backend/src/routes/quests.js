@@ -3,12 +3,30 @@ const supabase = require('../lib/supabase');
 
 const router = Router();
 
+const EARTH_RADIUS_METERS = 6371000;
+
+// Great-circle distance between two lat/lng points, in meters.
+function haversineDistance(lat1, lng1, lat2, lng2) {
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return EARTH_RADIUS_METERS * c;
+}
+
 // GET /api/quests
 // Supports optional viewport/category filtering for the interactive map:
 //   ?minLat=&maxLat=&minLng=&maxLng=  -> only quests inside the map bounding box
 //   ?category=histoire                -> only quests of that category
+// Supports proximity search around the user's position:
+//   ?lat=&lng=              -> annotate each quest with `distance` (meters) from
+//                               that point and sort nearest-first
+//   ?lat=&lng=&radius=      -> same, but only quests within `radius` meters
 router.get('/', async (req, res) => {
-  const { minLat, maxLat, minLng, maxLng, category } = req.query;
+  const { minLat, maxLat, minLng, maxLng, category, lat, lng, radius } = req.query;
 
   let query = supabase.from('quests').select('*');
 
@@ -20,7 +38,22 @@ router.get('/', async (req, res) => {
 
   const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+
+  if (!lat || !lng) return res.json(data);
+
+  const originLat = Number(lat);
+  const originLng = Number(lng);
+  const radiusMeters = radius ? Number(radius) : null;
+
+  const quests = data
+    .map((quest) => ({
+      ...quest,
+      distance: Math.round(haversineDistance(originLat, originLng, quest.lat, quest.lng)),
+    }))
+    .filter((quest) => radiusMeters === null || quest.distance <= radiusMeters)
+    .sort((a, b) => a.distance - b.distance);
+
+  res.json(quests);
 });
 
 router.post('/', async (req, res) => {
