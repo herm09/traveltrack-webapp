@@ -1,8 +1,3 @@
-# CLAUDE.md
-
-> **IMPORTANT — Read this file before making ANY modification to this repository.**
-> This file contains the product vision, business context, and technical stack decisions for this project. Always read it first so that code changes, feature additions, and architectural decisions stay consistent with the product intent described below. If a request conflicts with the context here, flag the conflict to the user instead of silently deviating.
-
 ## Product: QuestLog
 
 **Pitch:** "QuestLog — Donnez un score à votre curiosité."
@@ -87,7 +82,7 @@ Jalons clés : M2 CDC/maquettes validés · M3 prototype cliquable · M6 premiè
 
 **Front mobile**
 - Flutter
-- Leaflet ou Mapbox (carte)
+- Flutter_map (carte)
 - Zustand (gestion d'état)
 
 **Backend (BaaS)**
@@ -99,7 +94,7 @@ Jalons clés : M2 CDC/maquettes validés · M3 prototype cliquable · M6 premiè
 
 **Front**
 - Flutter
-- Leaflet
+- Flutter_map
 
 **Backend**
 - NodeJS
