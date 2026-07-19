@@ -47,6 +47,7 @@ class _MapScreenState extends State<MapScreen> {
   Quest? get _nearestQuest {
     final quests = _filteredQuests;
     if (quests.isEmpty) return null;
+    quests.sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
     return quests.first;
   }
 
@@ -250,10 +251,7 @@ class _SearchBar extends StatelessWidget {
 }
 
 class _CategoryFilters extends StatelessWidget {
-  const _CategoryFilters({
-    required this.selected,
-    required this.onSelect,
-  });
+  const _CategoryFilters({required this.selected, required this.onSelect});
 
   final QuestCategory? selected;
   final ValueChanged<QuestCategory?> onSelect;

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../viewmodels/auth_viewmodel.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -8,6 +11,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
   late TextEditingController _emailController;
   late TextEditingController _passwordController;
   bool _obscurePassword = true;
@@ -24,6 +28,18 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    // Pas de navigation manuelle ici : GoRouter réagit automatiquement au
+    // changement de session via `refreshListenable` + `redirect` (voir
+    // app_router.dart) et nous enverra sur /map dès que la connexion réussit.
+    await authViewModel.signIn(
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+    );
   }
 
   @override

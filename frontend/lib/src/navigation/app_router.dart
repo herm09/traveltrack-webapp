@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../services/supabase_client.dart';
+import '../viewmodels/auth_viewmodel.dart';
 import '../views/auth/login_screen.dart';
 import '../views/auth/register_screen.dart';
 import '../views/home_screen.dart';
@@ -11,15 +13,24 @@ import '../views/quests_list_screen.dart';
 import '../views/root_tabs_screen.dart';
 import '../views/search_screen.dart';
 import '../views/trip_detail_screen.dart';
+import 'go_router_refresh_stream.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
-  initialLocation: '/auth/login',
+  initialLocation: '/home',
+  refreshListenable: GoRouterRefreshStream(supabase.auth.onAuthStateChange),
+  redirect: (context, state) {
+    final loggedIn = authViewModel.isAuthenticated;
+    final loggingIn = state.matchedLocation == '/auth/login' || state.matchedLocation == '/auth/register';
+
+    if (!loggedIn && !loggingIn) return '/auth/login';
+    if (loggedIn && loggingIn) return '/map';
+    return null;
+  },
   routes: [
-    // ===== AUTH ROUTES =====
     GoRoute(
       path: '/auth/login',
       parentNavigatorKey: _rootNavigatorKey,
@@ -62,18 +73,22 @@ final GoRouter appRouter = GoRouter(
         ),
         StatefulShellBranch(
           routes: [
-            GoRoute(
-              path: '/search',
-              builder: (context, state) => const SearchScreen(),
-            ),
+            GoRoute(path: '/quests', builder: (context, state) => const QuestListScreen()),
           ],
         ),
         StatefulShellBranch(
           routes: [
-            GoRoute(
-              path: '/profile',
-              builder: (context, state) => const ProfileScreen(),
-            ),
+            GoRoute(path: '/map', builder: (context, state) => const MapScreen()),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(path: '/search', builder: (context, state) => const SearchScreen()),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(path: '/profile', builder: (context, state) => const ProfileScreen()),
           ],
         ),
       ],
