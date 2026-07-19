@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../services/data/mock_data.dart';
 import '../models/quest.dart';
+import '../services/permission_service.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -18,6 +19,30 @@ class _MapScreenState extends State<MapScreen> {
   static const _userPosition = LatLng(48.8566, 2.3522); // mock
 
   QuestCategory? _selectedCategory; // null = "Toutes"
+  bool _requestingLocation = false;
+
+  Future<void> _onLocationButtonTap() async {
+    if (_requestingLocation) return;
+    setState(() => _requestingLocation = true);
+    try {
+      final granted = await PermissionService.instance.requestLocationPermission();
+      if (!mounted) return;
+      if (!granted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Localisation refusée : activez-la dans les réglages pour vous situer sur la carte.'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Impossible de demander la localisation : $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _requestingLocation = false);
+    }
+  }
 
   IconData _iconForCategory(QuestCategory category) {
     switch (category) {
@@ -165,7 +190,7 @@ class _MapScreenState extends State<MapScreen> {
               bottom: nearest != null ? 190 : 20,
               child: _RoundIconButton(
                 icon: Icons.my_location,
-                onTap: () {},
+                onTap: _onLocationButtonTap,
               ),
             ),
 
