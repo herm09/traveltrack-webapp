@@ -8,7 +8,6 @@ import '../views/auth/login_screen.dart';
 import '../views/auth/register_screen.dart';
 import '../views/home_screen.dart';
 import '../views/map_screen.dart';
-import '../views/permission_onboarding_screen.dart';
 import '../views/profile_screen.dart';
 import '../views/quests_list_screen.dart';
 import '../views/root_tabs_screen.dart';
@@ -70,11 +69,6 @@ final GoRouter appRouter = GoRouter(
           ],
         ),
       ],
-    ),
-    GoRoute(
-      path: '/permissions',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const PermissionOnboardingScreen(),
     ),
     GoRoute(
       path: '/trip/:tripId',
