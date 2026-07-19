@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const supabase = require('../lib/supabase');
+const requireAdmin = require('../middleware/requireAdmin');
 
 const router = Router();
 
@@ -23,7 +24,7 @@ router.get('/', async (req, res) => {
   res.json(data);
 });
 
-router.post('/', async (req, res) => {
+router.post('/', requireAdmin, async (req, res) => {
   const { data, error } = await supabase.from('quests').insert(req.body).select().single();
   if (error) return res.status(400).json({ error: error.message });
   res.status(201).json(data);
@@ -35,13 +36,13 @@ router.get('/:id', async (req, res) => {
   res.json(data);
 });
 
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', requireAdmin, async (req, res) => {
   const { data, error } = await supabase.from('quests').update(req.body).eq('id', req.params.id).select().single();
   if (error) return res.status(400).json({ error: error.message });
   res.json(data);
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAdmin, async (req, res) => {
   const { error } = await supabase.from('quests').delete().eq('id', req.params.id);
   if (error) return res.status(400).json({ error: error.message });
   res.status(204).send();

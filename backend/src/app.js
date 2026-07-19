@@ -13,6 +13,6 @@ app.use(express.json());
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
 app.use('/api/trips', requireAuth, tripsRouter);
-app.use('/api/quests', questsRouter);
+app.use('/api/quests', requireAuth, questsRouter);
 
 module.exports = app;
