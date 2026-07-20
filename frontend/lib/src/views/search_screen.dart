@@ -1,19 +1,19 @@
-// path: lib/src/views/quest_list_screen.dart
+// path: lib/src/views/search_screen.dart
 import 'package:flutter/material.dart';
 
-class QuestListScreen extends StatelessWidget {
-  const QuestListScreen({super.key});
+class SearchScreen extends StatelessWidget {
+  const SearchScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Quêtes'),
+        title: const Text('Recherche'),
         centerTitle: true,
       ),
       body: const Center(
         child: Text(
-          'Liste de quêtes',
+          'Recherche',
           style: TextStyle(fontSize: 18, color: Colors.grey),
         ),
       ),

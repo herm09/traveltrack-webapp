@@ -2,11 +2,12 @@ import '../../models/feed_item.dart';
 import '../../models/quest.dart';
 
 class MockData {
+  // path: lib/src/services/data/mock_data.dart (extrait à remplacer)
   static final List<Quest> quests = [
     const Quest(
       id: 'q1',
       title: 'Découvre la Tour Eiffel',
-      category: 'Culture',
+      category: QuestCategory.histoire,
       description: 'Rends-toi au pied de la Tour Eiffel et prends une photo.',
       distanceKm: 1.2,
       xp: 50,
@@ -17,7 +18,7 @@ class MockData {
     const Quest(
       id: 'q2',
       title: 'Balade au Louvre',
-      category: 'Culture',
+      category: QuestCategory.histoire,
       description: 'Visite la pyramide du Louvre et explore ses environs.',
       distanceKm: 2.5,
       xp: 40,
@@ -29,7 +30,7 @@ class MockData {
     const Quest(
       id: 'q3',
       title: 'Pique-nique aux Tuileries',
-      category: 'Nature',
+      category: QuestCategory.nature,
       description: 'Profite d\'un moment de calme dans le jardin des Tuileries.',
       distanceKm: 3.0,
       xp: 30,
@@ -40,7 +41,7 @@ class MockData {
     const Quest(
       id: 'q4',
       title: 'Croissant chez le boulanger',
-      category: 'Gastronomie',
+      category: QuestCategory.gastro,
       description: 'Goûte un authentique croissant parisien.',
       distanceKm: 0.8,
       xp: 20,
@@ -52,7 +53,7 @@ class MockData {
     const Quest(
       id: 'q5',
       title: 'Coucher de soleil à Montmartre',
-      category: 'Nature',
+      category: QuestCategory.social,
       description: 'Admire la vue depuis les marches du Sacré-Cœur.',
       distanceKm: 4.7,
       xp: 60,
