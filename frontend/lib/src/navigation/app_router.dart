@@ -41,7 +41,8 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const RegisterScreen(),
     ),
     StatefulShellRoute.indexedStack(
-      builder: (context, state, navigationShell) => RootTabsScreen(navigationShell: navigationShell),
+      builder: (context, state, navigationShell) =>
+          RootTabsScreen(navigationShell: navigationShell),
       branches: [
         StatefulShellBranch(
           routes: [
