@@ -1,19 +1,30 @@
 # TravelTrack
 
-Travel tracking app — Flutter frontend + Node.js/Express backend.
+> "Donnez un score à votre curiosité." Turns exploring a city into a real-world game — users discover geolocated cultural/food/history quests, validate them with a photo + GPS check, and track their progress across the city.
+
+Flutter frontend (MVVM) + Node.js/Express backend, backed by Supabase.
 
 ## Structure
 
 ```
 traveltrack-webapp/
-├── frontend/   Flutter — go_router + Leaflet (WebView) + Supabase
+├── frontend/                    Flutter app (MVVM)
 │   └── lib/src/
-│       ├── services/     # Supabase client
-│       ├── navigation/   # go_router config + tab shell
-│       ├── models/
-│       ├── viewmodels/
-│       └── views/        # Home, Map, TripDetail
-└── backend/    Node.js/Express — Supabase (service role) + Render deployment
+│       ├── models/               # Quest, FeedItem, ...
+│       ├── viewmodels/           # AuthViewModel, ...
+│       ├── views/                # Home, Map, Feed, QuestsList, Search, Profile, AddQuest, TripDetail
+│       │   └── auth/              # Login, Register
+│       ├── widgets/               # Shared widgets (QuestCard, ...)
+│       ├── navigation/            # go_router config + tab shell
+│       └── services/
+│           ├── auth_service.dart
+│           ├── supabase_client.dart
+│           └── data/               # Mock data (pre-backend-integration)
+└── backend/                     Node.js/Express — Supabase (service role) + Render deployment
+    └── src/
+        ├── routes/                # trips, ...
+        ├── middleware/            # requireAuth
+        └── lib/                    # Supabase client
 ```
 
 ## Getting started
@@ -41,6 +52,10 @@ flutter pub get
 flutter run   # pick an Android/iOS device or emulator
 ```
 
+## Map
+
+The map is rendered natively with [flutter_map](https://pub.dev/packages/flutter_map) (`latlong2` for coordinates) — no WebView involved.
+
 ## Environment variables
 
 | Variable | Where | Description |
@@ -50,6 +65,7 @@ flutter run   # pick an Android/iOS device or emulator
 | `SUPABASE_ANON_KEY` | frontend only | Public anon key |
 | `API_BASE_URL` | frontend | Backend URL (`http://10.0.2.2:3000` for Android emulator) |
 | `ALLOWED_ORIGIN` | backend | CORS allowed origin |
+| `PORT` | backend | Backend listen port (defaults to `3000`) |
 
 ## Deploy (backend → Render)
 
