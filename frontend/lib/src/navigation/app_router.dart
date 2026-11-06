@@ -1,6 +1,8 @@
 // path: lib/src/navigation/app_router.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:traveltrack/src/viewmodels/analytics_consent_viewmodel.dart';
+import 'package:traveltrack/src/views/analytics_consent_screen.dart';
 import 'package:traveltrack/src/views/auth/forgot_password_screen.dart';
 import 'package:traveltrack/src/views/auth/reset_password_screen.dart';
 
@@ -24,6 +26,7 @@ final GoRouter appRouter = GoRouter(
   refreshListenable: Listenable.merge([
     GoRouterRefreshStream(supabase.auth.onAuthStateChange),
     authViewModel.isPasswordRecoveryPending,
+    analyticsConsentViewModel,
   ]),
   redirect: (context, state) {
     const resetPasswordLocation = '/auth/reset-password';
@@ -34,6 +37,16 @@ final GoRouter appRouter = GoRouter(
           ? null
           : resetPasswordLocation;
     }
+
+    // Le choix est demandé avant tout le reste, pour que l'inscription puisse
+    // être mesurée quand l'utilisateur a accepté.
+    const analyticsConsentLocation = '/analytics-consent';
+    if (analyticsConsentViewModel.isChoiceRequired) {
+      return state.matchedLocation == analyticsConsentLocation
+          ? null
+          : analyticsConsentLocation;
+    }
+    if (state.matchedLocation == analyticsConsentLocation) return '/map';
 
     final loggedIn = authViewModel.isAuthenticated;
     if (state.matchedLocation == resetPasswordLocation) {
@@ -53,6 +66,11 @@ final GoRouter appRouter = GoRouter(
   routes: [
     // Sur le web, le retour d'OAuth ou d'un email arrive sur la racine de l'app.
     GoRoute(path: '/', redirect: (context, state) => '/map'),
+    GoRoute(
+      path: '/analytics-consent',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const AnalyticsConsentScreen(),
+    ),
     GoRoute(
       path: '/auth/login',
       parentNavigatorKey: _rootNavigatorKey,

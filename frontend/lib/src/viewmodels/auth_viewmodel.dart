@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:traveltrack/src/services/analytics_service.dart';
 import 'package:traveltrack/src/services/auth_service.dart';
 
 class AuthViewModel extends ChangeNotifier {
-  AuthViewModel({AuthService? authService})
-    : _authService = authService ?? AuthService() {
+  AuthViewModel({AuthService? authService, AnalyticsService? analyticsService})
+    : _authService = authService ?? AuthService(),
+      _analyticsService = analyticsService ?? AnalyticsService.instance {
     _authStateSubscription = _authService.authStateChanges.listen(
       _onAuthStateChanged,
       onError: _onAuthStateError,
@@ -14,6 +16,7 @@ class AuthViewModel extends ChangeNotifier {
   }
 
   final AuthService _authService;
+  final AnalyticsService _analyticsService;
   late final StreamSubscription<AuthState> _authStateSubscription;
 
   bool _isLoading = false;
@@ -61,7 +64,10 @@ class AuthViewModel extends ChangeNotifier {
       );
       // Avec une session, le routeur redirige seul vers /map. Sans session, la
       // confirmation par email est active et il faut prévenir l'utilisateur.
-      if (signUpResponse.session != null) return;
+      if (signUpResponse.session != null) {
+        await _captureEmailAuthEvent(AnalyticsEvents.userSignedUp);
+        return;
+      }
 
       // Supabase masque les adresses déjà inscrites derrière un faux succès,
       // reconnaissable à une liste d'identités vide.
@@ -69,13 +75,17 @@ class AuthViewModel extends ChangeNotifier {
       if (userIdentities != null && userIdentities.isEmpty) {
         throw AuthException('already registered', code: 'user_already_exists');
       }
+      await _captureEmailAuthEvent(AnalyticsEvents.userSignedUp);
       _successMessage =
           'Compte créé ! Confirme ton adresse grâce au lien reçu par email, puis connecte-toi.';
     });
   }
 
   Future<bool> signIn({required String email, required String password}) {
-    return _run(() => _authService.signIn(email: email, password: password));
+    return _run(() async {
+      await _authService.signIn(email: email, password: password);
+      await _captureEmailAuthEvent(AnalyticsEvents.userLoggedIn);
+    });
   }
 
   Future<bool> signInWithGoogle() => _signInWithProvider(OAuthProvider.google);
@@ -99,6 +109,7 @@ class AuthViewModel extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    await _analyticsService.captureEvent(AnalyticsEvents.userLoggedOut);
     await _authService.signOut();
     notifyListeners();
   }
@@ -123,12 +134,30 @@ class AuthViewModel extends ChangeNotifier {
       if (!isBrowserOpened) {
         throw AuthException('Impossible d\'ouvrir la page de connexion.');
       }
+      await _analyticsService.captureEvent(
+        AnalyticsEvents.oauthLoginStarted,
+        properties: {'provider': provider.name},
+      );
     });
+  }
+
+  Future<void> _captureEmailAuthEvent(String eventName) {
+    return _analyticsService.captureEvent(
+      eventName,
+      properties: {'method': 'email'},
+    );
   }
 
   void _onAuthStateChanged(AuthState authState) {
     if (authState.event == AuthChangeEvent.passwordRecovery) {
       _isPasswordRecoveryPending.value = true;
+    }
+
+    final signedInUserId = authState.session?.user.id;
+    if (signedInUserId != null) {
+      _analyticsService.identifyUser(signedInUserId);
+    } else if (authState.event == AuthChangeEvent.signedOut) {
+      _analyticsService.resetUser();
     }
   }
 

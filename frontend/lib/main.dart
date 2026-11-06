@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:traveltrack/src/navigation/router_screen_view_tracker.dart';
+import 'package:traveltrack/src/services/analytics_service.dart';
+import 'package:traveltrack/src/viewmodels/analytics_consent_viewmodel.dart';
+
 import 'src/navigation/app_router.dart';
 
 Future<void> main() async {
@@ -12,6 +16,15 @@ Future<void> main() async {
     url: dotenv.env['SUPABASE_URL']!,
     publishableKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
+
+  await analyticsConsentViewModel.loadSavedConsent();
+  await AnalyticsService.instance.initialize(
+    hasConsent: analyticsConsentViewModel.hasConsent,
+  );
+  RouterScreenViewTracker(
+    router: appRouter,
+    analyticsService: AnalyticsService.instance,
+  ).start();
 
   runApp(const TravelTrackApp());
 }

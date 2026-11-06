@@ -1,6 +1,8 @@
 // lib/src/views/profile_screen.dart
 import 'package:flutter/material.dart';
+import 'package:traveltrack/src/viewmodels/analytics_consent_viewmodel.dart';
 import 'package:traveltrack/src/viewmodels/auth_viewmodel.dart';
+import 'package:traveltrack/src/widgets/analytics_consent_tile.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -126,6 +128,10 @@ class _ProfileScreenState extends State<ProfileScreen>
 
           // Mes badges
           SliverToBoxAdapter(child: _BadgesSection(badges: _badges)),
+
+          // Mesure d'audience
+          if (analyticsConsentViewModel.isAnalyticsAvailable)
+            const SliverToBoxAdapter(child: AnalyticsConsentTile()),
 
           // Tabs
           SliverPersistentHeader(
