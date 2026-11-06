@@ -1,11 +1,12 @@
 // path: lib/src/views/map_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
-import '../services/data/mock_data.dart';
 import '../models/quest.dart';
+import '../services/quest_service.dart';
 import '../services/permission_service.dart';
 
 class MapScreen extends StatefulWidget {
@@ -18,6 +19,8 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   static const _userPosition = LatLng(48.8566, 2.3522); // Paris - à adapter avec localisation réelle
 
+  List<Quest> _quests = [];
+  String? _error;
   QuestCategory? _selectedCategory; // null = "Toutes"
   bool _requestingLocation = false;
 
@@ -44,6 +47,37 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _loadQuests();
+  }
+
+  Future<void> _loadQuests() async {
+    try {
+      final quests = await QuestService.fetchQuests();
+      setState(() {
+        _quests = quests;
+        _error = null;
+      });
+    } catch (e) {
+      setState(() => _error = 'Impossible de charger les quêtes: $e');
+    }
+  }
+
+  // Quests are fetched from Supabase without a distance (that depends on
+  // where the user is standing), so it's computed live against the current
+  // position instead of being read off the model.
+  double _distanceKm(Quest quest) {
+    final meters = Geolocator.distanceBetween(
+      _userPosition.latitude,
+      _userPosition.longitude,
+      quest.lat,
+      quest.lng,
+    );
+    return meters / 1000;
+  }
+
   IconData _iconForCategory(QuestCategory category) {
     switch (category) {
       case QuestCategory.histoire:
@@ -64,15 +98,17 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   List<Quest> get _filteredQuests {
-    final all = MockData.quests;
-    if (_selectedCategory == null) return all;
-    return all.where((q) => q.category == _selectedCategory).toList();
+    if (_selectedCategory == null) return _quests;
+    return _quests.where((q) => q.category == _selectedCategory).toList();
   }
 
   Quest? get _nearestQuest {
     final quests = _filteredQuests;
     if (quests.isEmpty) return null;
-    return quests.first;
+    final sorted = [...quests]..sort(
+        (a, b) => _distanceKm(a).compareTo(_distanceKm(b)),
+      );
+    return sorted.first;
   }
 
   @override
@@ -168,6 +204,20 @@ class _MapScreenState extends State<MapScreen> {
                     selected: _selectedCategory,
                     onSelect: (cat) => setState(() => _selectedCategory = cat),
                   ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 10),
+                    Material(
+                      color: Colors.red.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                          _error!,
+                          style: TextStyle(color: Colors.red.shade900),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -195,12 +245,12 @@ class _MapScreenState extends State<MapScreen> {
             // --- Sheet quête à proximité ---
             if (nearest != null)
               Positioned(
-                left: 12,
-                right: 12,
-                bottom: 12,
+                left: 0,
+                right: 0,
+                bottom: 0,
                 child: _NearbyQuestSheet(
                   quest: nearest,
-                  onClose: () => setState(() {}),
+                  distanceKm: _distanceKm(nearest),
                 ),
               ),
           ],
@@ -390,13 +440,10 @@ class _RoundIconButton extends StatelessWidget {
 }
 
 class _NearbyQuestSheet extends StatelessWidget {
-  const _NearbyQuestSheet({
-    required this.quest,
-    required this.onClose,
-  });
+  const _NearbyQuestSheet({required this.quest, required this.distanceKm});
 
   final Quest quest;
-  final VoidCallback onClose;
+  final double distanceKm;
 
   @override
   Widget build(BuildContext context) {
@@ -447,13 +494,15 @@ class _NearbyQuestSheet extends StatelessWidget {
             children: [
               const SizedBox(width: 16),
               ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  quest.imageUrl,
-                  width: 56,
-                  height: 56,
-                  fit: BoxFit.cover,
-                ),
+                borderRadius: BorderRadius.circular(10),
+                child: quest.imageUrl.isEmpty
+                    ? Container(width: 56, height: 56, color: Colors.grey[200])
+                    : Image.network(
+                        quest.imageUrl,
+                        width: 56,
+                        height: 56,
+                        fit: BoxFit.cover,
+                      ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -484,11 +533,8 @@ class _NearbyQuestSheet extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${quest.distanceKm.toStringAsFixed(1)} km • ${quest.xp} XP',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
+                      '${(distanceKm * 1000).round()} m · +${quest.xp} XP',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
                   ],
                 ),
