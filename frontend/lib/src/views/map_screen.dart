@@ -1,13 +1,16 @@
 // path: lib/src/views/map_screen.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:traveltrack/src/constants/location_strings.dart';
+import 'package:traveltrack/src/viewmodels/map_location_viewmodel.dart';
 
 import '../models/quest.dart';
 import '../services/quest_service.dart';
-import '../services/permission_service.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -17,41 +20,84 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  static const _userPosition = LatLng(48.8566, 2.3522); // Paris - à adapter avec localisation réelle
+  // Centre affiché tant que la position de l'utilisateur est inconnue.
+  static const _defaultMapCenter = LatLng(48.8566, 2.3522); // Paris
+  static const _proximityCircleRadiusInMeters = 80.0;
+  static const _userRecenterZoom = 16.0;
 
   List<Quest> _quests = [];
   String? _error;
   QuestCategory? _selectedCategory; // null = "Toutes"
-  bool _requestingLocation = false;
   bool _isNearbySheetDismissed = false;
 
-  Future<void> _onLocationButtonTap() async {
-    if (_requestingLocation) return;
-    setState(() => _requestingLocation = true);
-    try {
-      final granted = await PermissionService.instance.requestLocationPermission();
-      if (!mounted) return;
-      if (!granted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Localisation refusée : activez-la dans les réglages pour vous situer sur la carte.'),
-          ),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Impossible de demander la localisation : $e')),
-      );
-    } finally {
-      if (mounted) setState(() => _requestingLocation = false);
-    }
-  }
+  final MapController _mapController = MapController();
+  final MapLocationViewModel _locationViewModel = MapLocationViewModel();
+  StreamSubscription<MapRecenterRequest>? _recenterRequestSubscription;
+  bool _isMapReady = false;
+  MapRecenterRequest? _recenterRequestWaitingForMap;
 
   @override
   void initState() {
     super.initState();
+    _locationViewModel.addListener(_onUserLocationStateChanged);
+    _recenterRequestSubscription = _locationViewModel.recenterRequests.listen(
+      _applyRecenterRequest,
+    );
+    _locationViewModel.startTrackingIfAlreadyAllowed();
     _loadQuests();
+  }
+
+  @override
+  void dispose() {
+    _recenterRequestSubscription?.cancel();
+    _locationViewModel.removeListener(_onUserLocationStateChanged);
+    _locationViewModel.dispose();
+    _mapController.dispose();
+    super.dispose();
+  }
+
+  void _onUserLocationStateChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _onMapReady() {
+    _isMapReady = true;
+    final waitingRecenterRequest = _recenterRequestWaitingForMap;
+    _recenterRequestWaitingForMap = null;
+    if (waitingRecenterRequest != null) {
+      _applyRecenterRequest(waitingRecenterRequest);
+    }
+  }
+
+  void _applyRecenterRequest(MapRecenterRequest recenterRequest) {
+    if (!_isMapReady) {
+      _recenterRequestWaitingForMap = recenterRequest;
+      return;
+    }
+    final currentZoom = _mapController.camera.zoom;
+    final targetZoom =
+        recenterRequest.isRequestedByUser && currentZoom < _userRecenterZoom
+        ? _userRecenterZoom
+        : currentZoom;
+    _mapController.move(
+      LatLng(
+        recenterRequest.location.latitude,
+        recenterRequest.location.longitude,
+      ),
+      targetZoom,
+    );
+  }
+
+  LatLng? get _userLatLng {
+    final userLocation = _locationViewModel.currentLocation;
+    if (userLocation == null) return null;
+    return LatLng(userLocation.latitude, userLocation.longitude);
+  }
+
+  IconData get _locationButtonIcon {
+    return _locationViewModel.hasLocationError
+        ? Icons.location_disabled
+        : Icons.my_location;
   }
 
   Future<void> _loadQuests() async {
@@ -70,9 +116,10 @@ class _MapScreenState extends State<MapScreen> {
   // where the user is standing), so it's computed live against the current
   // position instead of being read off the model.
   double _distanceKm(Quest quest) {
+    final distanceOrigin = _userLatLng ?? _defaultMapCenter;
     final meters = Geolocator.distanceBetween(
-      _userPosition.latitude,
-      _userPosition.longitude,
+      distanceOrigin.latitude,
+      distanceOrigin.longitude,
       quest.lat,
       quest.lng,
     );
@@ -106,9 +153,8 @@ class _MapScreenState extends State<MapScreen> {
   Quest? get _nearestQuest {
     final quests = _filteredQuests;
     if (quests.isEmpty) return null;
-    final sorted = [...quests]..sort(
-        (a, b) => _distanceKm(a).compareTo(_distanceKm(b)),
-      );
+    final sorted = [...quests]
+      ..sort((a, b) => _distanceKm(a).compareTo(_distanceKm(b)));
     return sorted.first;
   }
 
@@ -116,6 +162,10 @@ class _MapScreenState extends State<MapScreen> {
   Widget build(BuildContext context) {
     final quests = _filteredQuests;
     final nearest = _isNearbySheetDismissed ? null : _nearestQuest;
+    final userLatLng = _userLatLng;
+    final isFollowingUser =
+        _locationViewModel.isFollowingUser &&
+        _locationViewModel.status == UserLocationStatus.tracking;
 
     return Scaffold(
       body: SafeArea(
@@ -124,28 +174,35 @@ class _MapScreenState extends State<MapScreen> {
             // --- Carte ---
             Positioned.fill(
               child: FlutterMap(
-                options: const MapOptions(
-                  initialCenter: _userPosition,
+                mapController: _mapController,
+                options: MapOptions(
+                  initialCenter: _defaultMapCenter,
                   initialZoom: 14,
+                  onMapReady: _onMapReady,
+                  onPositionChanged: (camera, hasGesture) {
+                    if (hasGesture) _locationViewModel.onMapMovedByUser();
+                  },
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.traveltrack.app',
                   ),
-                  // Cercle de précision GPS
-                  CircleLayer(
-                    circles: [
-                      CircleMarker(
-                        point: _userPosition,
-                        radius: 80,
-                        useRadiusInMeter: true,
-                        color: const Color(0x332F6FED),
-                        borderColor: const Color(0xFF2F6FED),
-                        borderStrokeWidth: 1,
-                      ),
-                    ],
-                  ),
+                  // Cercle de proximité autour de l'utilisateur
+                  if (userLatLng != null)
+                    CircleLayer(
+                      circles: [
+                        CircleMarker(
+                          point: userLatLng,
+                          radius: _proximityCircleRadiusInMeters,
+                          useRadiusInMeter: true,
+                          color: const Color(0x332F6FED),
+                          borderColor: const Color(0xFF2F6FED),
+                          borderStrokeWidth: 1,
+                        ),
+                      ],
+                    ),
                   MarkerLayer(
                     markers: [
                       // Pins des quêtes
@@ -163,29 +220,30 @@ class _MapScreenState extends State<MapScreen> {
                         );
                       }),
                       // Position utilisateur
-                      Marker(
-                        point: _userPosition,
-                        width: 46,
-                        height: 46,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2F6FED),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.my_location,
-                            color: Colors.white,
-                            size: 22,
+                      if (userLatLng != null)
+                        Marker(
+                          point: userLatLng,
+                          width: 46,
+                          height: 46,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2F6FED),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.my_location,
+                              color: Colors.white,
+                              size: 22,
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ],
@@ -208,6 +266,14 @@ class _MapScreenState extends State<MapScreen> {
                       _isNearbySheetDismissed = false;
                     }),
                   ),
+                  if (_locationViewModel.isErrorMessageVisible) ...[
+                    const SizedBox(height: 10),
+                    _LocationErrorBanner(
+                      status: _locationViewModel.status,
+                      onRetry: _locationViewModel.onRecenterButtonPressed,
+                      onClose: _locationViewModel.dismissErrorMessage,
+                    ),
+                  ],
                   if (_error != null) ...[
                     const SizedBox(height: 10),
                     Material(
@@ -241,8 +307,14 @@ class _MapScreenState extends State<MapScreen> {
               right: 12,
               bottom: nearest != null ? 190 : 20,
               child: _RoundIconButton(
-                icon: Icons.my_location,
-                onTap: _onLocationButtonTap,
+                icon: _locationButtonIcon,
+                iconColor: isFollowingUser
+                    ? Theme.of(context).colorScheme.primary
+                    : null,
+                isLoading:
+                    _locationViewModel.status == UserLocationStatus.locating,
+                semanticLabel: LocationStrings.recenterButtonLabel,
+                onTap: _locationViewModel.onRecenterButtonPressed,
               ),
             ),
 
@@ -330,10 +402,7 @@ class _SearchBar extends StatelessWidget {
 }
 
 class _CategoryFilters extends StatelessWidget {
-  const _CategoryFilters({
-    required this.selected,
-    required this.onSelect,
-  });
+  const _CategoryFilters({required this.selected, required this.onSelect});
 
   final QuestCategory? selected;
   final ValueChanged<QuestCategory?> onSelect;
@@ -351,9 +420,9 @@ class _CategoryFilters extends StatelessWidget {
             onTap: () => onSelect(null),
           ),
           const SizedBox(width: 8),
-          ...QuestCategory.values
-              .where((cat) => cat != QuestCategory.all)
-              .map((cat) {
+          ...QuestCategory.values.where((cat) => cat != QuestCategory.all).map((
+            cat,
+          ) {
             return Padding(
               padding: const EdgeInsets.only(right: 8),
               child: _FilterChip(
@@ -415,30 +484,157 @@ class _RoundIconButton extends StatelessWidget {
   const _RoundIconButton({
     required this.icon,
     required this.onTap,
+    this.iconColor,
+    this.isLoading = false,
+    this.semanticLabel,
   });
 
   final IconData icon;
   final VoidCallback onTap;
+  final Color? iconColor;
+  final bool isLoading;
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+    return Semantics(
+      button: true,
+      label: semanticLabel,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: isLoading
+              ? const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(icon, color: iconColor ?? Colors.black87, size: 22),
+        ),
+      ),
+    );
+  }
+}
+
+/// Message affiché quand la position de l'utilisateur ne peut pas être
+/// obtenue, avec une action pour réessayer.
+class _LocationErrorBanner extends StatelessWidget {
+  const _LocationErrorBanner({
+    required this.status,
+    required this.onRetry,
+    required this.onClose,
+  });
+
+  final UserLocationStatus status;
+  final VoidCallback onRetry;
+  final VoidCallback onClose;
+
+  String get _message {
+    return switch (status) {
+      UserLocationStatus.serviceUnavailable =>
+        LocationStrings.locationNotSupportedMessage,
+      UserLocationStatus.positionUnavailable =>
+        LocationStrings.positionUnavailableMessage,
+      _ => LocationStrings.permissionRequiredMessage,
+    };
+  }
+
+  String? get _hint {
+    return status == UserLocationStatus.permissionBlocked
+        ? LocationStrings.permissionBlockedHint
+        : null;
+  }
+
+  String get _actionLabel {
+    return status == UserLocationStatus.permissionDismissed
+        ? LocationStrings.enableLocationAction
+        : LocationStrings.retryAction;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final hint = _hint;
+
+    return Material(
+      color: colorScheme.errorContainer,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 4, 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Icon(
+                    Icons.location_off_outlined,
+                    size: 20,
+                    color: colorScheme.onErrorContainer,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _message,
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onErrorContainer,
+                          ),
+                        ),
+                        if (hint != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            hint,
+                            style: textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onErrorContainer,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 18),
+                  color: colorScheme.onErrorContainer,
+                  tooltip: LocationStrings.closeMessageTooltip,
+                  visualDensity: VisualDensity.compact,
+                  onPressed: onClose,
+                ),
+              ],
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: onRetry,
+                style: TextButton.styleFrom(
+                  foregroundColor: colorScheme.onErrorContainer,
+                ),
+                child: Text(_actionLabel),
+              ),
             ),
           ],
         ),
-        child: Icon(icon, color: Colors.black87, size: 22),
       ),
     );
   }
@@ -492,10 +688,7 @@ class _NearbyQuestSheet extends StatelessWidget {
               const SizedBox(width: 4),
               Text(
                 'Quête à proximité',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
               ),
             ],
           ),
