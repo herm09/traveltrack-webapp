@@ -7,6 +7,6 @@ void main() {
   testWidgets('HomeScreen shows the app title', (WidgetTester tester) async {
     await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
 
-    expect(find.text('TravelTrack'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'TravelTrack'), findsOneWidget);
   });
 }

@@ -23,6 +23,7 @@ class _MapScreenState extends State<MapScreen> {
   String? _error;
   QuestCategory? _selectedCategory; // null = "Toutes"
   bool _requestingLocation = false;
+  bool _isNearbySheetDismissed = false;
 
   Future<void> _onLocationButtonTap() async {
     if (_requestingLocation) return;
@@ -114,7 +115,7 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     final quests = _filteredQuests;
-    final nearest = _nearestQuest;
+    final nearest = _isNearbySheetDismissed ? null : _nearestQuest;
 
     return Scaffold(
       body: SafeArea(
@@ -202,7 +203,10 @@ class _MapScreenState extends State<MapScreen> {
                   const SizedBox(height: 10),
                   _CategoryFilters(
                     selected: _selectedCategory,
-                    onSelect: (cat) => setState(() => _selectedCategory = cat),
+                    onSelect: (cat) => setState(() {
+                      _selectedCategory = cat;
+                      _isNearbySheetDismissed = false;
+                    }),
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 10),
@@ -251,6 +255,7 @@ class _MapScreenState extends State<MapScreen> {
                 child: _NearbyQuestSheet(
                   quest: nearest,
                   distanceKm: _distanceKm(nearest),
+                  onClose: () => setState(() => _isNearbySheetDismissed = true),
                 ),
               ),
           ],
@@ -440,10 +445,15 @@ class _RoundIconButton extends StatelessWidget {
 }
 
 class _NearbyQuestSheet extends StatelessWidget {
-  const _NearbyQuestSheet({required this.quest, required this.distanceKm});
+  const _NearbyQuestSheet({
+    required this.quest,
+    required this.distanceKm,
+    required this.onClose,
+  });
 
   final Quest quest;
   final double distanceKm;
+  final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
