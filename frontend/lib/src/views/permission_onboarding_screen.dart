@@ -36,7 +36,7 @@ class _PermissionOnboardingScreenState
         notifications == AppPermissionStatus.granted;
 
     if (allGranted) {
-      context.go('/home');
+      context.go('/map');
     } else {
       setState(() => _loading = false);
     }
@@ -47,7 +47,7 @@ class _PermissionOnboardingScreenState
     await PermissionService.instance.requestLocationPermission();
     await PermissionService.instance.requestCameraPermission();
     await PermissionService.instance.requestNotificationPermission();
-    if (mounted) context.go('/home');
+    if (mounted) context.go('/map');
   }
 
   @override
