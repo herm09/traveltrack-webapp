@@ -1,8 +1,8 @@
 const { Router } = require('express');
 const supabase = require('../lib/supabase');
+const requireAdmin = require('../middleware/requireAdmin');
 
 const router = Router();
-
 const EARTH_RADIUS_METERS = 6371000;
 
 // Great-circle distance between two lat/lng points, in meters.
@@ -35,8 +35,8 @@ router.get('/', async (req, res) => {
   if (minLng) query = query.gte('lng', Number(minLng));
   if (maxLng) query = query.lte('lng', Number(maxLng));
   if (category) query = query.eq('category', category);
-
   const { data, error } = await query;
+  if (error) return res.status(500).json({ error: error.message });
   if (error) return res.status(500).json({ error: error.message });
 
   if (!lat || !lng) return res.json(data);
@@ -56,7 +56,7 @@ router.get('/', async (req, res) => {
   res.json(quests);
 });
 
-router.post('/', async (req, res) => {
+router.post('/', requireAdmin, async (req, res) => {
   const { data, error } = await supabase.from('quests').insert(req.body).select().single();
   if (error) return res.status(400).json({ error: error.message });
   res.status(201).json(data);
@@ -68,13 +68,13 @@ router.get('/:id', async (req, res) => {
   res.json(data);
 });
 
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', requireAdmin, async (req, res) => {
   const { data, error } = await supabase.from('quests').update(req.body).eq('id', req.params.id).select().single();
   if (error) return res.status(400).json({ error: error.message });
   res.json(data);
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAdmin, async (req, res) => {
   const { error } = await supabase.from('quests').delete().eq('id', req.params.id);
   if (error) return res.status(400).json({ error: error.message });
   res.status(204).send();
