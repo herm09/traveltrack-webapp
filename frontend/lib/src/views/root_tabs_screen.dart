@@ -12,7 +12,7 @@ class RootTabsScreen extends StatefulWidget {
 }
 
 class _RootTabsScreenState extends State<RootTabsScreen> {
-  int _selectedIndex = 0;
+  late int _selectedIndex = widget.navigationShell.currentIndex;
 
   static const _destinations = [
     NavigationDestination(

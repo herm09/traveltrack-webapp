@@ -1,6 +1,8 @@
 // path: lib/src/navigation/app_router.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:traveltrack/src/views/auth/forgot_password_screen.dart';
+import 'package:traveltrack/src/views/auth/reset_password_screen.dart';
 
 import '../services/supabase_client.dart';
 import '../viewmodels/auth_viewmodel.dart';
@@ -22,16 +24,38 @@ final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>()
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/home',
-  refreshListenable: GoRouterRefreshStream(supabase.auth.onAuthStateChange),
+  refreshListenable: Listenable.merge([
+    GoRouterRefreshStream(supabase.auth.onAuthStateChange),
+    authViewModel.isPasswordRecoveryPending,
+  ]),
   redirect: (context, state) {
+    const resetPasswordLocation = '/auth/reset-password';
+    // Le lien de réinitialisation ouvre une session : on impose la saisie du
+    // nouveau mot de passe avant de donner accès au reste de l'application.
+    if (authViewModel.isPasswordRecoveryPending.value) {
+      return state.matchedLocation == resetPasswordLocation
+          ? null
+          : resetPasswordLocation;
+    }
+
     final loggedIn = authViewModel.isAuthenticated;
-    final loggingIn = state.matchedLocation == '/auth/login' || state.matchedLocation == '/auth/register';
+    if (state.matchedLocation == resetPasswordLocation) {
+      return loggedIn ? '/map' : '/auth/login';
+    }
+
+    final loggingIn = const {
+      '/auth/login',
+      '/auth/register',
+      '/auth/forgot-password',
+    }.contains(state.matchedLocation);
 
     if (!loggedIn && !loggingIn) return '/auth/login';
     if (loggedIn && loggingIn) return '/map';
     return null;
   },
   routes: [
+    // Sur le web, le retour d'OAuth ou d'un email arrive sur la racine de l'app.
+    GoRoute(path: '/', redirect: (context, state) => '/home'),
     GoRoute(
       path: '/auth/login',
       parentNavigatorKey: _rootNavigatorKey,
@@ -41,6 +65,16 @@ final GoRouter appRouter = GoRouter(
       path: '/auth/register',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const RegisterScreen(),
+    ),
+    GoRoute(
+      path: '/auth/forgot-password',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const ForgotPasswordScreen(),
+    ),
+    GoRoute(
+      path: '/auth/reset-password',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const ResetPasswordScreen(),
     ),
 
     // ===== MAIN APP ROUTES =====
@@ -71,16 +105,6 @@ final GoRouter appRouter = GoRouter(
               path: '/map',
               builder: (context, state) => const MapScreen(),
             ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(path: '/quests', builder: (context, state) => const QuestListScreen()),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(path: '/map', builder: (context, state) => const MapScreen()),
           ],
         ),
         StatefulShellBranch(

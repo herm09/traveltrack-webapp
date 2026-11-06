@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-
-import '../../viewmodels/auth_viewmodel.dart';
+import 'package:traveltrack/src/models/auth_form_validators.dart';
+import 'package:traveltrack/src/viewmodels/auth_viewmodel.dart';
+import 'package:traveltrack/src/widgets/auth_form_field.dart';
+import 'package:traveltrack/src/widgets/auth_link_row.dart';
+import 'package:traveltrack/src/widgets/auth_screen_header.dart';
+import 'package:traveltrack/src/widgets/auth_submit_section.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,7 +18,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _emailController;
   late TextEditingController _passwordController;
-  bool _obscurePassword = true;
 
   @override
   void initState() {
@@ -42,169 +45,134 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _navigateTo(String location) {
+    authViewModel.clearMessages();
+    context.go(location);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              const Text(
-                'Bienvenue sur\nTravelTrack',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
+          child: Form(
+            key: _formKey,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const AuthScreenHeader(
+                  title: 'Bienvenue sur\nTravelTrack',
+                  subtitle: 'Connecte-toi pour explorer le monde',
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Connecte-toi pour explorer le monde',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 40),
+                const SizedBox(height: 40),
 
-              // Email Field
-              Text(
-                'Email',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
+                AuthFormField(
+                  label: 'Email',
                   hintText: 'exemple@email.com',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  onChanged: (_) => authViewModel.clearMessages(),
+                  validator: AuthFormValidators.validateEmail,
                 ),
-              ),
-              const SizedBox(height: 20),
+                const SizedBox(height: 20),
 
-              // Password Field
-              Text(
-                'Mot de passe',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
+                AuthFormField(
+                  label: 'Mot de passe',
                   hintText: '••••••••',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
+                  controller: _passwordController,
+                  isPassword: true,
+                  onChanged: (_) => authViewModel.clearMessages(),
+                  validator: AuthFormValidators.validateExistingPassword,
+                ),
+                const SizedBox(height: 12),
+
+                // Forgot Password Link
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => _navigateTo('/auth/forgot-password'),
+                    child: const Text('Mot de passe oublié ?'),
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
+                const SizedBox(height: 24),
 
-              // Forgot Password Link
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () {},
-                  child: const Text('Mot de passe oublié ?'),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Login Button
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () {
-                    // TODO: Implémenter la logique de connexion
-                  },
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: const Text('Se connecter'),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Divider
-              Row(
-                children: [
-                  Expanded(child: Divider(color: Colors.grey[300])),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(
-                      'ou',
-                      style: TextStyle(color: Colors.grey[600]),
-                    ),
-                  ),
-                  Expanded(child: Divider(color: Colors.grey[300])),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // Social Login Buttons
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Text('G'),
-                  label: const Text('Continuer avec Google'),
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Text('f'),
-                  label: const Text('Continuer avec Facebook'),
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // Sign Up Link
-              Center(
-                child: RichText(
-                  text: TextSpan(
-                    text: 'Tu n\'as pas de compte ? ',
-                    style: TextStyle(color: Colors.grey[700]),
-                    children: [
-                      TextSpan(
-                        text: 'Créer un compte',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.bold,
+                ListenableBuilder(
+                  listenable: authViewModel,
+                  builder: (context, _) {
+                    final isLoading = authViewModel.isLoading;
+                    return Column(
+                      children: [
+                        AuthSubmitSection(
+                          label: 'Se connecter',
+                          onSubmit: _submit,
+                          isLoading: isLoading,
+                          errorMessage: authViewModel.errorMessage,
                         ),
-                      ),
-                    ],
-                  ),
+                        const SizedBox(height: 20),
+
+                        // Divider
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Divider(color: colorScheme.outlineVariant),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              child: Text(
+                                'ou',
+                                style: TextStyle(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Divider(color: colorScheme.outlineVariant),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Social Login Buttons
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: isLoading
+                                ? null
+                                : authViewModel.signInWithGoogle,
+                            icon: const Text('G'),
+                            label: const Text('Continuer avec Google'),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: isLoading
+                                ? null
+                                : authViewModel.signInWithFacebook,
+                            icon: const Text('f'),
+                            label: const Text('Continuer avec Facebook'),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
-              ),
-            ],
+                const SizedBox(height: 32),
+
+                AuthLinkRow(
+                  message: 'Tu n\'as pas de compte ?',
+                  linkLabel: 'Créer un compte',
+                  onLinkPressed: () => _navigateTo('/auth/register'),
+                ),
+              ],
+            ),
           ),
         ),
       ),

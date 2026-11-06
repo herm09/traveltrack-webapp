@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-
-import '../../viewmodels/auth_viewmodel.dart';
+import 'package:traveltrack/src/models/auth_form_validators.dart';
+import 'package:traveltrack/src/viewmodels/auth_viewmodel.dart';
+import 'package:traveltrack/src/widgets/auth_form_field.dart';
+import 'package:traveltrack/src/widgets/auth_link_row.dart';
+import 'package:traveltrack/src/widgets/auth_screen_header.dart';
+import 'package:traveltrack/src/widgets/auth_submit_section.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -17,8 +21,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   late TextEditingController _emailController;
   late TextEditingController _passwordController;
   late TextEditingController _confirmPasswordController;
-  bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
   bool _acceptedTerms = false;
 
   @override
@@ -48,6 +50,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // Pas de navigation manuelle ici : GoRouter réagit automatiquement au
     // changement de session via `refreshListenable` + `redirect` (voir
     // app_router.dart) et nous enverra sur /map dès que l'inscription réussit.
+    // Si une confirmation par email est requise, le ViewModel l'annonce.
     await authViewModel.signUp(
       email: _emailController.text.trim(),
       password: _passwordController.text,
@@ -56,237 +59,137 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  void _goToLogin() {
+    authViewModel.clearMessages();
+    context.go('/auth/login');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Back Button
-              IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => Navigator.pop(context),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-              const SizedBox(height: 16),
-
-              // Header
-              const Text(
-                'Créer un compte',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
+          child: Form(
+            key: _formKey,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: _goToLogin,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Rejoins-nous et commence l\'aventure',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 32),
+                const SizedBox(height: 16),
 
-              // First Name Field
-              Text(
-                'Prénom',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _firstNameController,
-                decoration: InputDecoration(
+                const AuthScreenHeader(
+                  title: 'Créer un compte',
+                  subtitle: 'Rejoins-nous et commence l\'aventure',
+                ),
+                const SizedBox(height: 32),
+
+                AuthFormField(
+                  label: 'Prénom',
                   hintText: 'Jean',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
+                  controller: _firstNameController,
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              // Last Name Field
-              Text(
-                'Nom',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _lastNameController,
-                decoration: InputDecoration(
+                AuthFormField(
+                  label: 'Nom',
                   hintText: 'Dupont',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                  controller: _lastNameController,
+                ),
+                const SizedBox(height: 16),
+
+                ListenableBuilder(
+                  listenable: authViewModel,
+                  builder: (context, _) => AuthFormField(
+                    label: 'Email',
+                    hintText: 'exemple@email.com',
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    onChanged: (_) => authViewModel.clearMessages(),
+                    validator: AuthFormValidators.validateEmail,
+                    forcedErrorText: authViewModel.emailErrorMessage,
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              // Email Field
-              Text(
-                'Email',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  hintText: 'exemple@email.com',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Password Field
-              Text(
-                'Mot de passe',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
+                AuthFormField(
+                  label: 'Mot de passe',
                   hintText: '••••••••',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
-                  ),
+                  controller: _passwordController,
+                  isPassword: true,
+                  onChanged: (_) => authViewModel.clearMessages(),
+                  validator: AuthFormValidators.validateNewPassword,
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              // Confirm Password Field
-              Text(
-                'Confirmer le mot de passe',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _confirmPasswordController,
-                obscureText: _obscureConfirmPassword,
-                decoration: InputDecoration(
+                AuthFormField(
+                  label: 'Confirmer le mot de passe',
                   hintText: '••••••••',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscureConfirmPassword
-                          ? Icons.visibility_off
-                          : Icons.visibility,
+                  controller: _confirmPasswordController,
+                  isPassword: true,
+                  onChanged: (_) => authViewModel.clearMessages(),
+                  validator: (enteredConfirmation) =>
+                      AuthFormValidators.validatePasswordConfirmation(
+                        enteredConfirmation,
+                        _passwordController.text,
+                      ),
+                ),
+                const SizedBox(height: 20),
+
+                // Terms & Conditions Checkbox
+                CheckboxListTile(
+                  value: _acceptedTerms,
+                  onChanged: (value) {
+                    setState(() {
+                      _acceptedTerms = value ?? false;
+                    });
+                  },
+                  contentPadding: EdgeInsets.zero,
+                  title: Text.rich(
+                    TextSpan(
+                      text: 'J\'accepte les ',
+                      style: TextStyle(color: colorScheme.onSurfaceVariant),
+                      children: [
+                        TextSpan(
+                          text: 'conditions d\'utilisation',
+                          style: TextStyle(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
-                    onPressed: () {
-                      setState(() {
-                        _obscureConfirmPassword = !_obscureConfirmPassword;
-                      });
-                    },
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
-              // Terms & Conditions Checkbox
-              CheckboxListTile(
-                value: _acceptedTerms,
-                onChanged: (value) {
-                  setState(() {
-                    _acceptedTerms = value ?? false;
-                  });
-                },
-                contentPadding: EdgeInsets.zero,
-                title: RichText(
-                  text: TextSpan(
-                    text: 'J\'accepte les ',
-                    style: TextStyle(color: Colors.grey[700]),
-                    children: [
-                      TextSpan(
-                        text: 'conditions d\'utilisation',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                ListenableBuilder(
+                  listenable: authViewModel,
+                  builder: (context, _) => AuthSubmitSection(
+                    label: 'Créer un compte',
+                    onSubmit: _acceptedTerms ? _submit : null,
+                    isLoading: authViewModel.isLoading,
+                    errorMessage: authViewModel.errorMessage,
+                    successMessage: authViewModel.successMessage,
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
-              // Register Button
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _acceptedTerms
-                      ? () {
-                          // TODO: Implémenter la logique d'inscription
-                        }
-                      : null,
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: const Text('Créer un compte'),
+                AuthLinkRow(
+                  message: 'Tu as déjà un compte ?',
+                  linkLabel: 'Se connecter',
+                  onLinkPressed: _goToLogin,
                 ),
-              ),
-              const SizedBox(height: 20),
-
-              // Login Link
-              Center(
-                child: RichText(
-                  text: TextSpan(
-                    text: 'Tu as déjà un compte ? ',
-                    style: TextStyle(color: Colors.grey[700]),
-                    children: [
-                      TextSpan(
-                        text: 'Se connecter',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
