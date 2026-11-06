@@ -16,11 +16,6 @@ class _RootTabsScreenState extends State<RootTabsScreen> {
 
   static const _destinations = [
     NavigationDestination(
-      icon: Icon(Icons.home_outlined),
-      selectedIcon: Icon(Icons.home),
-      label: 'Accueil',
-    ),
-    NavigationDestination(
       icon: Icon(Icons.list_alt_outlined),
       selectedIcon: Icon(Icons.list_alt),
       label: 'Quêtes',
@@ -29,11 +24,6 @@ class _RootTabsScreenState extends State<RootTabsScreen> {
       icon: Icon(Icons.map_outlined),
       selectedIcon: Icon(Icons.map),
       label: 'Carte',
-    ),
-    NavigationDestination(
-      icon: Icon(Icons.search_outlined),
-      selectedIcon: Icon(Icons.search),
-      label: 'Recherche',
     ),
     NavigationDestination(
       icon: Icon(Icons.person_outline),

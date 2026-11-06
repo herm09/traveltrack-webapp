@@ -1,5 +1,6 @@
 // lib/src/views/profile_screen.dart
 import 'package:flutter/material.dart';
+import 'package:traveltrack/src/viewmodels/auth_viewmodel.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -93,6 +94,15 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Se déconnecter',
+            onPressed: () => authViewModel.signOut(),
+          ),
+        ],
+      ),
       body: CustomScrollView(
         slivers: [
           // Header Profile
