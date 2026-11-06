@@ -17,6 +17,7 @@ import '../views/trip_detail_screen.dart';
 import 'go_router_refresh_stream.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
@@ -41,12 +42,35 @@ final GoRouter appRouter = GoRouter(
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const RegisterScreen(),
     ),
+
+    // ===== MAIN APP ROUTES =====
     StatefulShellRoute.indexedStack(
-      builder: (context, state, navigationShell) => RootTabsScreen(navigationShell: navigationShell),
+      builder: (context, state, navigationShell) =>
+          RootTabsScreen(navigationShell: navigationShell),
       branches: [
         StatefulShellBranch(
+          navigatorKey: _shellNavigatorKey,
           routes: [
-            GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+            GoRoute(
+              path: '/home',
+              builder: (context, state) => const HomeScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/quests',
+              builder: (context, state) => const QuestListScreen(),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/map',
+              builder: (context, state) => const MapScreen(),
+            ),
           ],
         ),
         StatefulShellBranch(
@@ -71,6 +95,8 @@ final GoRouter appRouter = GoRouter(
         ),
       ],
     ),
+
+    // ===== DETAIL ROUTES =====
     GoRoute(
       path: '/permissions',
       parentNavigatorKey: _rootNavigatorKey,
@@ -79,7 +105,9 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/trip/:tripId',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => TripDetailScreen(tripId: state.pathParameters['tripId']!),
+      builder: (context, state) => TripDetailScreen(
+        tripId: state.pathParameters['tripId']!,
+      ),
     ),
   ],
 );

@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../models/quest.dart';
 import '../services/quest_service.dart';
+import '../services/permission_service.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -16,11 +17,35 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  static const _userPosition = LatLng(48.8566, 2.3522); // mock
+  static const _userPosition = LatLng(48.8566, 2.3522); // Paris - à adapter avec localisation réelle
 
   List<Quest> _quests = [];
   String? _error;
   QuestCategory? _selectedCategory; // null = "Toutes"
+  bool _requestingLocation = false;
+
+  Future<void> _onLocationButtonTap() async {
+    if (_requestingLocation) return;
+    setState(() => _requestingLocation = true);
+    try {
+      final granted = await PermissionService.instance.requestLocationPermission();
+      if (!mounted) return;
+      if (!granted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Localisation refusée : activez-la dans les réglages pour vous situer sur la carte.'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Impossible de demander la localisation : $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _requestingLocation = false);
+    }
+  }
 
   @override
   void initState() {
@@ -64,7 +89,11 @@ class _MapScreenState extends State<MapScreen> {
       case QuestCategory.sport:
         return Icons.directions_run;
       case QuestCategory.nature:
-        return Icons.location_on;
+        return Icons.park;
+      case QuestCategory.culture:
+        return Icons.museum;
+      case QuestCategory.all:
+        return Icons.apps;
     }
   }
 
@@ -110,8 +139,8 @@ class _MapScreenState extends State<MapScreen> {
                         point: _userPosition,
                         radius: 80,
                         useRadiusInMeter: true,
-                        color: Colors.blue.withOpacity(0.15),
-                        borderColor: Colors.blue.withOpacity(0.3),
+                        color: const Color(0x332F6FED),
+                        borderColor: const Color(0xFF2F6FED),
                         borderStrokeWidth: 1,
                       ),
                     ],
@@ -125,35 +154,32 @@ class _MapScreenState extends State<MapScreen> {
                           width: 40,
                           height: 40,
                           child: GestureDetector(
-                            onTap: () {
-                              setState(() {}); // pourrait scroller vers la quête sélectionnée
-                              context.push('/trip/${quest.id}');
-                            },
+                            onTap: () => context.push('/quest/${quest.id}'),
                             child: _QuestPin(
                               icon: _iconForCategory(quest.category),
                             ),
                           ),
                         );
                       }),
-                      // Pin utilisateur (bleu, avec icône cloche/notif)
+                      // Position utilisateur
                       Marker(
                         point: _userPosition,
                         width: 46,
                         height: 46,
                         child: Container(
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF2F6FED),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2F6FED),
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black26,
                                 blurRadius: 6,
-                                offset: Offset(0, 2),
+                                offset: const Offset(0, 2),
                               ),
                             ],
                           ),
                           child: const Icon(
-                            Icons.notifications,
+                            Icons.my_location,
                             color: Colors.white,
                             size: 22,
                           ),
@@ -171,9 +197,8 @@ class _MapScreenState extends State<MapScreen> {
               left: 12,
               right: 12,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _SearchBar(),
+                  const _SearchBar(),
                   const SizedBox(height: 10),
                   _CategoryFilters(
                     selected: _selectedCategory,
@@ -204,21 +229,20 @@ class _MapScreenState extends State<MapScreen> {
               child: _RoundIconButton(
                 icon: Icons.explore_outlined,
                 onTap: () {},
-                topOffsetForFilters: true,
               ),
             ),
 
-            // --- Bouton géoloc (bas droite, au-dessus du bottom sheet) ---
+            // --- Bouton localisation ---
             Positioned(
               right: 12,
               bottom: nearest != null ? 190 : 20,
               child: _RoundIconButton(
                 icon: Icons.my_location,
-                onTap: () {},
+                onTap: _onLocationButtonTap,
               ),
             ),
 
-            // --- Bottom sheet "Quête à proximité" ---
+            // --- Sheet quête à proximité ---
             if (nearest != null)
               Positioned(
                 left: 0,
@@ -246,11 +270,15 @@ class _QuestPin extends StatelessWidget {
     return Container(
       width: 36,
       height: 36,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.black,
         shape: BoxShape.circle,
         boxShadow: [
-          BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Icon(icon, color: Colors.white, size: 18),
@@ -259,27 +287,32 @@ class _QuestPin extends StatelessWidget {
 }
 
 class _SearchBar extends StatelessWidget {
+  const _SearchBar();
+
   @override
   Widget build(BuildContext context) {
     return Container(
       height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Row(
         children: [
+          const SizedBox(width: 16),
           Icon(Icons.search, color: Colors.grey[500]),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Rechercher un lieu, une quête...',
-                hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+              decoration: const InputDecoration(
+                hintText: 'Rechercher une quête...',
                 border: InputBorder.none,
                 isCollapsed: true,
               ),
@@ -292,7 +325,10 @@ class _SearchBar extends StatelessWidget {
 }
 
 class _CategoryFilters extends StatelessWidget {
-  const _CategoryFilters({required this.selected, required this.onSelect});
+  const _CategoryFilters({
+    required this.selected,
+    required this.onSelect,
+  });
 
   final QuestCategory? selected;
   final ValueChanged<QuestCategory?> onSelect;
@@ -310,7 +346,9 @@ class _CategoryFilters extends StatelessWidget {
             onTap: () => onSelect(null),
           ),
           const SizedBox(width: 8),
-          ...QuestCategory.values.map((cat) {
+          ...QuestCategory.values
+              .where((cat) => cat != QuestCategory.all)
+              .map((cat) {
             return Padding(
               padding: const EdgeInsets.only(right: 8),
               child: _FilterChip(
@@ -320,19 +358,6 @@ class _CategoryFilters extends StatelessWidget {
               ),
             );
           }),
-          // bouton filtres additionnels (icône sliders)
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: const [
-                BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
-              ],
-            ),
-            child: const Icon(Icons.tune, size: 18, color: Colors.black87),
-          ),
         ],
       ),
     );
@@ -355,21 +380,25 @@ class _FilterChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           color: isSelected ? Colors.black : Colors.white,
           borderRadius: BorderRadius.circular(18),
-          boxShadow: const [
-            BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
           ],
         ),
         alignment: Alignment.center,
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.black87,
             fontSize: 13,
             fontWeight: FontWeight.w500,
+            color: isSelected ? Colors.white : Colors.black,
           ),
         ),
       ),
@@ -381,31 +410,30 @@ class _RoundIconButton extends StatelessWidget {
   const _RoundIconButton({
     required this.icon,
     required this.onTap,
-    this.topOffsetForFilters = false,
   });
 
   final IconData icon;
   final VoidCallback onTap;
-  final bool topOffsetForFilters;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(top: topOffsetForFilters ? 0 : 0),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            boxShadow: const [
-              BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2)),
-            ],
-          ),
-          child: Icon(icon, color: Colors.black87, size: 20),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
+        child: Icon(icon, color: Colors.black87, size: 22),
       ),
     );
   }
@@ -420,43 +448,51 @@ class _NearbyQuestSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -2)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 12,
+            offset: const Offset(0, -2),
+          ),
         ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const SizedBox(height: 12),
           Center(
             child: Container(
               width: 36,
               height: 4,
-              margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
                 color: Colors.grey[300],
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
           ),
+          const SizedBox(height: 16),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              const SizedBox(width: 16),
+              const Icon(Icons.location_on, size: 16, color: Colors.black54),
+              const SizedBox(width: 4),
+              Text(
                 'Quête à proximité',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey[600],
+                ),
               ),
-              const Icon(Icons.keyboard_arrow_up, size: 20, color: Colors.black54),
             ],
           ),
           const SizedBox(height: 12),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const SizedBox(width: 16),
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: quest.imageUrl.isEmpty
@@ -474,20 +510,26 @@ class _NearbyQuestSheet extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         quest.category.label,
-                        style: const TextStyle(fontSize: 11, color: Colors.black54),
+                        style: const TextStyle(fontSize: 11),
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       quest.title,
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -497,23 +539,31 @@ class _NearbyQuestSheet extends StatelessWidget {
                   ],
                 ),
               ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 20),
+                onPressed: onClose,
+              ),
+              const SizedBox(width: 8),
             ],
           ),
           const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
-                child: SizedBox(
-                  height: 44,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: SizedBox(
+                    height: 44,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(22),
+                        ),
                       ),
+                      onPressed: () => context.push('/quest/${quest.id}'),
+                      child: const Text('Faire la quête'),
                     ),
-                    onPressed: () => context.push('/trip/${quest.id}'),
-                    child: const Text('Voir le détail'),
                   ),
                 ),
               ),
@@ -522,13 +572,18 @@ class _NearbyQuestSheet extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[300]!),
-                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(22),
                 ),
-                child: const Icon(Icons.bookmark_border, size: 20),
+                child: IconButton(
+                  icon: const Icon(Icons.directions, size: 20),
+                  onPressed: () {},
+                ),
               ),
+              const SizedBox(width: 16),
             ],
           ),
+          const SizedBox(height: 16),
         ],
       ),
     );
