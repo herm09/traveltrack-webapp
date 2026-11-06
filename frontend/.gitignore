@@ -32,6 +32,7 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+# .metadata should remain version controlled (Flutter tooling relies on it)
 
 # Symbolication related
 app.*.symbols
